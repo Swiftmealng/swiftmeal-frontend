@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userAPI, authAPI, tokenManager } from '../services/api';
+import { useAuth } from '../hooks/useAuth'; 
 import toast from 'react-hot-toast';
 
 const ProfilePage = () => {
+  const { logout } = useAuth();
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const user = tokenManager.getUser();
@@ -172,27 +174,24 @@ const ProfilePage = () => {
   };
 
   const handleLogout = async () => {
-    try {
-      // Call logout endpoint
-      await authAPI.logout();
-      
-      // Clear tokens and user data
-      tokenManager.clearTokens();
-      tokenManager.clearUser();
-      
-      // Show success message
-      toast.success('Logged out successfully');
-      
-      // Redirect to login
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Even if API call fails, clear local data and redirect
-      tokenManager.clearTokens();
-      tokenManager.clearUser();
-      navigate('/login');
-    }
-  };
+  try {
+    // Call logout endpoint
+    await authAPI.logout();
+  } catch (error) {
+    console.error('Logout error:', error);
+    // Continue with logout even if API fails
+  } finally {
+    // Always clear local data and update context
+    logout(); // This calls the logout from useAuth() context
+    
+    // Show success message
+    toast.success('Logged out successfully');
+    
+    // Navigate will happen automatically via PublicRoute redirect
+    // But we can force it to be safe
+    navigate('/login', { replace: true });
+  }
+};
 
   if (isFetchingProfile) {
     return (
