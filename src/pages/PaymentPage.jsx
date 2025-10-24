@@ -10,7 +10,7 @@ const PaymentPage = () => {
   const user = tokenManager.getUser();
   
   const [order, setOrder] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('card'); // card, bank_transfer, wallet
+  const [paymentMethod, setPaymentMethod] = useState('card');
   const [cardDetails, setCardDetails] = useState({
     cardNumber: '',
     cardName: '',
@@ -53,10 +53,9 @@ const PaymentPage = () => {
   }, [orderId]);
 
   // Check payment status after order is loaded
-  // Check payment status after order is loaded
 useEffect(() => {
   const checkPaymentStatus = async () => {
-    if (!order) return; // Wait for order to be loaded
+    if (!order) return;
     
     // Check if Paystack redirected back with payment reference
     const urlParams = new URLSearchParams(window.location.search);
