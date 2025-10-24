@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { orderAPI, paymentAPI, tokenManager } from '../services/api';
+import { toast } from 'react-hot-toast';
 
 const PaymentPage = () => {
   const { orderId: rawOrderId } = useParams();
@@ -52,38 +53,47 @@ const PaymentPage = () => {
   }, [orderId]);
 
   // Check payment status after order is loaded
-  useEffect(() => {
-    const checkPaymentStatus = async () => {
-      if (!order) return; // Wait for order to be loaded
+  // Check payment status after order is loaded
+useEffect(() => {
+  const checkPaymentStatus = async () => {
+    if (!order) return; // Wait for order to be loaded
+    
+    // Check if Paystack redirected back with payment reference
+    const urlParams = new URLSearchParams(window.location.search);
+    const reference = urlParams.get('reference') || urlParams.get('trxref');
+    
+    if (reference) {
+      console.log('Payment reference from URL:', reference); // Debug log
       
-      // Check if Paystack redirected back with payment reference
-      const urlParams = new URLSearchParams(window.location.search);
-      const reference = urlParams.get('reference') || urlParams.get('trxref');
-      
-      if (reference) {
-        try {
-          const response = await paymentAPI.verify(reference);
-          
-          if (response.success && response.data.status === 'success') {
-            // Payment successful, redirect to order details
-            navigate(`/OrderDetails/${order.orderNumber}`);
-            return;
-          } else {
-            // Payment not successful, show manual verification option
-            setShowManualVerify(true);
-            setPaymentReference(reference);
-          }
-        } catch (error) {
-          console.error('Payment verification error:', error);
-          // Show manual verification option on error
+      try {
+        // Wait a bit for webhook to process (race condition fix)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const response = await paymentAPI.verify(reference);
+        
+        if (response.success && response.data.status === 'success') {
+          // Payment successful, redirect to order details
+          toast.success('Payment confirmed successfully!');
+          navigate(`/OrderDetails/${order.orderNumber}`, { replace: true });
+          return;
+        } else {
+          // Payment not successful, show manual verification option
           setShowManualVerify(true);
           setPaymentReference(reference);
+          setError(response.data?.message || 'Payment verification pending');
         }
+      } catch (error) {
+        console.error('Payment verification error:', error);
+        // Show manual verification option on error
+        setShowManualVerify(true);
+        setPaymentReference(reference);
+        setError('Unable to verify payment automatically. Please click "Verify My Payment" button.');
       }
-    };
+    }
+  };
 
-    checkPaymentStatus();
-  }, [order, navigate]);
+  checkPaymentStatus();
+}, [order, navigate]);
 
   const formatCardNumber = (value) => {
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
